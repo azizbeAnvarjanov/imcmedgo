@@ -33,6 +33,10 @@ body {
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+    --blue: #85a8ff;
+    --red: #f9b0b6;
+    --green: #cbffc9;
+    --yellow: #e6a23c;
   }
   .dark {
     --background: 0 0% 3.9%;
@@ -70,3 +74,26 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+
+
+
+.kassa-ul
+{
+  opacity: 0;
+  visibility: hidden;
+  left: 90%;
+}
+
+.kassa:hover ~ .kassa-ul
+{
+  opacity: 1;
+  visibility: visible;
+}
+.kassa-ul:hover
+{
+  opacity: 1;
+  visibility: visible;
+}
+
+

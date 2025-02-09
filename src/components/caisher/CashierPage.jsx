@@ -14,6 +14,7 @@ import {
   serverTimestamp,
   onSnapshot,
   deleteDoc,
+  getDoc,
 } from "firebase/firestore";
 import {
   Table,
@@ -32,20 +33,38 @@ import {
   SheetFooter,
 } from "../ui/sheet";
 import { Input } from "../ui/input";
-import { Select, SelectTrigger, SelectContent, SelectItem } from "../ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "../ui/select";
 import * as XLSX from "xlsx";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { SelectValue } from "@radix-ui/react-select";
+import {
+  Banknote,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  FilterX,
+  SheetIcon,
+  Trash,
+} from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FiPlus } from "react-icons/fi";
+import { HiOutlineRefresh } from "react-icons/hi";
+import { AiOutlineFileExcel } from "react-icons/ai";
 
 export default function KassirPage() {
   const [clients, setClients] = useState([]);
+  const [activeFilter, setActiveFilter] = useState(false);
   const [filteredClients, setFilteredClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentType, setPaymentType] = useState("");
   const [transactions, setTransactions] = useState([]);
   const [doctors, setDoctors] = useState({});
-  const [dateFilter, setDateFilter] = useState({ from: null, to: null });
+  const [dateFilter, setDateFilter] = useState({ from: 0, to: 0 });
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState("20"); // Default number of items per page
@@ -130,6 +149,7 @@ export default function KassirPage() {
   };
 
   const handleFilter = () => {
+    setActiveFilter(true);
     let filtered = [...clients];
     if (dateFilter.from && dateFilter.to) {
       filtered = filtered.filter(
@@ -145,15 +165,51 @@ export default function KassirPage() {
   };
 
   const clearFilters = () => {
-    setDateFilter({ from: null, to: null }); // Sanalarni boshlang'ich qiymatga qaytarish
+    setActiveFilter(false);
+    setDateFilter({ from: 0, to: 0 }); // Sanalarni boshlang'ich qiymatga qaytarish
     setStatusFilter(""); // Statusni boshlang'ich qiymatga qaytarish
     setFilteredClients(clients); // Barcha mijozlarni ko'rsatish
   };
 
-  const handleDelete = async (clientId) => {
-    await deleteDoc(doc(db, "patients", clientId));
-  };
+  // const handleDelete = async (clientId) => {
+  //   await deleteDoc(doc(db, "patients", clientId));
+  // };
 
+  const handleDelete = async (clientId) => {
+    try {
+      const patientRef = doc(db, "patients", clientId);
+      const patientSnap = await getDoc(patientRef);
+
+      if (!patientSnap.exists()) {
+        console.error("Patient not found!");
+        return;
+      }
+
+      const patientData = patientSnap.data();
+      const collectionDataRef = doc(db, "data", "krYftFb0sR60jyaLQbQs");
+      
+
+      // Agar status "to'lanmagan" bo'lmasa, bonuses va transactions kolleksiyalaridan ham o‘chiramiz
+      if (patientData.status !== "to'lanmagan") {
+        const collectionsToDelete = ["bonuses", "transactions"];
+
+        for (const collectionName of collectionsToDelete) {
+          const collectionRef = collection(db, collectionName);
+          const q = query(collectionRef, where("patientId", "==", clientId));
+          const snap = await getDocs(q);
+
+          const deletePromises = snap.docs.map((doc) => deleteDoc(doc.ref));
+          await Promise.all(deletePromises);
+        }
+      }
+
+      // Patientni o‘chiramiz
+      await deleteDoc(patientRef);
+      console.log("Patient and related data deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting patient:", error);
+    }
+  };
   const exportToExcel = () => {
     const worksheet = XLSX.utils.json_to_sheet(filteredClients);
     const workbook = XLSX.utils.book_new();
@@ -198,114 +254,143 @@ export default function KassirPage() {
     setCurrentPage(1); // Reset to the first page when items per page changes
   };
 
+  console.log(currentData);
+
   return (
-    <div className="p-6">
-      <h1 className="text-xl font-bold mb-4">Kassir sahifasi</h1>
-
-      <div className="flex gap-4 mb-4 items-end">
-        <div>
-          <label className="block text-sm font-medium">Boshlanish sanasi</label>
-          <Input
-            type="date"
-            onChange={(e) =>
-              setDateFilter((prev) => ({ ...prev, from: e.target.value }))
-            }
-          />
+    <div className="p-3">
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1">
+            <h1 className="text-xl font-bold">Kassir sahifasi</h1>
+            <button className="w-[30px] gird place-items-center h-[30px] text-2xl rounded-sm p-0">
+              <HiOutlineRefresh className="text-xl" />
+            </button>
+          </div>
+          <div>
+            <Input
+              type="date"
+              className="bg-white py-5"
+              value={dateFilter.from}
+              onChange={(e) =>
+                setDateFilter((prev) => ({ ...prev, from: e.target.value }))
+              }
+            />
+          </div>
+          <div>
+            <Input
+              type="date"
+              className="bg-white py-5"
+              value={dateFilter.to}
+              onChange={(e) =>
+                setDateFilter((prev) => ({ ...prev, to: e.target.value }))
+              }
+            />
+          </div>
+          {!activeFilter && (
+            <Button
+            disabled={dateFilter.from | dateFilter.to === 0 ? true : false}
+              onClick={handleFilter}
+              className="bg-gradient-to-l from-blue-600 to-green-600"
+            >
+              <Filter />
+            </Button>
+          )}
+          {activeFilter && (
+            <Button onClick={clearFilters} variant="destructive">
+              <FilterX />
+            </Button>
+          )}
         </div>
-        <div>
-          <label className="block text-sm font-medium">Tugash sanasi</label>
-          <Input
-            type="date"
-            onChange={(e) =>
-              setDateFilter((prev) => ({ ...prev, to: e.target.value }))
-            }
-          />
-        </div>
 
-        <div className="w-[200px]">
-          <Select onValueChange={(value) => setStatusFilter(value)}>
-            <SelectTrigger>{statusFilter || "Statusni tanlang"}</SelectTrigger>
-            <SelectContent>
-              <SelectItem value="To‘langan">To‘langan</SelectItem>
-              <SelectItem value="To‘liq to‘lanmagan">
-                To‘liq to‘lanmagan
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <Button onClick={handleFilter}>Filtrlash</Button>
-        <Button onClick={clearFilters} variant="destructive">
-          Tozalsh
-        </Button>
-        <Button onClick={exportToExcel}>Excelga yuklash</Button>
-      </div>
+        <div className="flex items-end gap-3">
+          <div className="w-[200px]">
+            <Select onValueChange={(value) => setStatusFilter(value)}>
+              <SelectTrigger>
+                {statusFilter || "Statusni tanlang"}
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="To‘langan">To‘langan</SelectItem>
+                <SelectItem value="To‘liq to‘lanmagan">
+                  To‘liq to‘lanmagan
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-      <div className="mb-4 flex gap-4">
-        <p className="py-1 px-4 bg-blue-400 rounded-md">
-          Jami summa: {totalSum.toLocaleString()}
-        </p>
-        <p className="py-1 px-4 bg-green-400 rounded-md">
-          To‘langan summa: {totalPaid.toLocaleString()}
-        </p>
-        <p className="py-1 px-4 bg-red-400 rounded-md">
-          Qoldiq summa: {totalRemaining.toLocaleString()}
-        </p>
-      </div>
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex gap-2 items-center">
-          <Button onClick={handlePreviousPage} disabled={currentPage === 1}>
-            <ChevronLeft />
-          </Button>
-          {currentPage} / {totalPages}
           <Button
-            onClick={handleNextPage}
-            disabled={currentPage === totalPages}
+            onClick={exportToExcel}
+            variant="outline"
+            className="py-[19px] rounded-lg"
           >
-            <ChevronRight />
+            <AiOutlineFileExcel />
+            Excel
           </Button>
         </div>
-        <div>
-          <Select
-            id="itemsPerPage"
-            defaultValue={itemsPerPage}
-            onValueChange={handleItemsPerPageChange}
-            className="border p-2 rounded"
-          >
-            <SelectTrigger className="w-[70px]">
-              <SelectValue placeholder={itemsPerPage} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="20">20</SelectItem>
-              <SelectItem value="30">30</SelectItem>
-              <SelectItem value="40">40</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-              <SelectItem value="60">60</SelectItem>
-              <SelectItem value="70">70</SelectItem>
-              <SelectItem value="80">80</SelectItem>
-              <SelectItem value="90">90</SelectItem>
-              <SelectItem value="100">100</SelectItem>
-              <SelectItem value="200">200</SelectItem>
-              <SelectItem value="300">300</SelectItem>
-              <SelectItem value="400">400</SelectItem>
-              <SelectItem value="500">500</SelectItem>
-            </SelectContent>
-          </Select>
+      </div>
+
+      <div className="mb-1 flex gap-2 text-sm text-left items-center justify-between">
+        <div className="flex items-center gap-2 text-sm">
+          <p className="py-1 w-[200px] border-l-[5px] flex items-center pl-2 border-[--blue] font-semibold">
+            Jami: {totalSum.toLocaleString()}
+          </p>
+          <p className="py-1 w-[200px] border-l-[5px] flex items-center pl-2 border-[--green] font-semibold">
+            To‘langan: {totalPaid.toLocaleString()}
+          </p>
+          <p className="py-1 w-[200px] border-l-[5px] flex items-center pl-2 border-[--red] font-semibold">
+            To'lanmagan: {totalRemaining.toLocaleString()}
+          </p>
+          <p className="py-1 w-[200px] font-semibold">
+            Bemorlar: {currentData.length}
+          </p>
+        </div>
+        <div className="pr-4 flex items-center gap-4">
+            <div className="flex gap-1 items-center">
+              <div className="w-[16px] h-[15px] rounded-sm bg-[--green]"></div>
+              100% to'lov
+            </div>
+            <div className="flex gap-1 items-center">
+              <div className="w-[16px] h-[15px] rounded-sm bg-[--yellow]"></div>
+             Kam to'lov
+            </div>
         </div>
       </div>
+
       <div>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableCell>№</TableCell>
-              <TableCell>FIO</TableCell>
-              <TableCell>Doktor</TableCell>
+              <TableCell className="w-[100px]">№</TableCell>
+              <TableCell className="w-[300px]">Bemor</TableCell>
+              <TableCell>Shifokor</TableCell>
+              <TableCell>Visits</TableCell>
               <TableCell>Chegirma</TableCell>
               <TableCell>Jami summa</TableCell>
               <TableCell>To'ladi</TableCell>
               <TableCell>Qoldiq</TableCell>
-              <TableCell>Status</TableCell>
               <TableCell>Yaratilgan sana</TableCell>
-              <TableCell>Amallar</TableCell>
+              <TableCell className="w-[150px]">Amallar</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell>
+                <Input
+                  placeholder="№"
+                  className="w-full py-5 rounded-lg placeholder:opacity-50 text-opacity-100 text-black"
+                />
+              </TableCell>
+              <TableCell>
+                <Input
+                  placeholder="Bemor"
+                  className="w-full py-5 rounded-lg placeholder:opacity-50 text-opacity-100 text-black"
+                />
+              </TableCell>
+              <TableCell></TableCell>
+              <TableCell></TableCell>
+              <TableCell></TableCell>
+              <TableCell></TableCell>
+              <TableCell></TableCell>
+              <TableCell></TableCell>
+              <TableCell></TableCell>
+              <TableCell></TableCell>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -316,135 +401,263 @@ export default function KassirPage() {
                   key={client.id}
                   className={
                     client.status === "To‘langan"
-                      ? "bg-green-500"
+                      ? "bg-[--green]"
                       : client.status === "To‘liq to‘lanmagan"
-                      ? "bg-yellow-500"
+                      ? "bg-[--yellow]"
                       : "bg-white"
                   }
                 >
-                  <TableCell>{idx + 1}</TableCell>
+                  <TableCell>{client.patientNumber}</TableCell>
                   <TableCell>
                     {client.lastName} {client.firstName}
                   </TableCell>
                   <TableCell>{doctors[client.doctor] || "Noma'lum"}</TableCell>
+                  <TableCell>{client.visits || "Noma'lum"}</TableCell>
                   <TableCell>{client.discount}</TableCell>
                   <TableCell>{client.totalPrice?.toLocaleString()}</TableCell>
                   <TableCell>{client.paid?.toLocaleString()}</TableCell>
                   <TableCell>{qoldiq?.toLocaleString()}</TableCell>
-                  <TableCell>{client.status}</TableCell>
                   <TableCell>
                     {client.createdAt?.toDate().toLocaleString() || "Noma'lum"}
                   </TableCell>
-                  <TableCell>
-                    <Button onClick={() => handleDelete(client.id)}>
-                      O‘chirish
-                    </Button>
-                    <Sheet>
-                      <SheetTrigger asChild>
-                        <Button
-                          onClick={() => {
-                            setSelectedClient(client);
-                            fetchTransactions(client.id);
-                          }}
-                        >
-                          To‘lov qilish
-                        </Button>
-                      </SheetTrigger>
-                      <SheetContent>
-                        <SheetHeader>
-                          <SheetTitle>To‘lov oynasi</SheetTitle>
-                        </SheetHeader>
-                        <div className="space-y-4 mt-4">
-                          <div className="flex items-center gap-4">
-                            <p className="bg-blue-300 py-1 px-3 rounded-md">
-                              Ja'mi summa: {client.totalPrice?.toLocaleString()}
-                            </p>
-                            <p className="bg-green-300 py-1 px-3 rounded-md">
-                              To'landi: {client.paid?.toLocaleString()}
-                            </p>
-                            <p className="bg-red-300 py-1 px-3 rounded-md">
-                              Qoldiq: {qoldiq?.toLocaleString()}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-5">
-                            <div className="flex gap-4">
-                              <div>
-                                <label className="block text-sm font-medium">
-                                  To‘lov turi
-                                </label>
-                                <Select
-                                  onValueChange={(value) =>
-                                    setPaymentType(value)
-                                  }
-                                >
-                                  <SelectTrigger>
-                                    {paymentType || "To‘lov turini tanlang"}
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Naqd">Naqd</SelectItem>
-                                    <SelectItem value="Plastik">
-                                      Plastik
-                                    </SelectItem>
-                                    <SelectItem value="Bank o‘tkazmasi">
-                                      Bank o‘tkazmasi
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
+                  <TableCell className="">
+                    <div className="flex items-center gap-3">
+                      <Sheet>
+                        <SheetTrigger asChild>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedClient(client);
+                              fetchTransactions(client.id);
+                            }}
+                          >
+                            To'lov
+                          </Button>
+                        </SheetTrigger>
+                        <SheetContent>
+                          <SheetHeader>
+                            <SheetTitle className="w-full h-20 flex items-center bg-gradient-to-r from-blue-600 to-green-600 text-white text-xl p-7">
+                              To‘lov ma'lumotlari
+                            </SheetTitle>
+                          </SheetHeader>
 
-                            <div>
-                              <label className="block text-sm font-medium">
-                                To‘lov summasi
-                              </label>
-                              <Input
-                                type="number"
-                                value={paymentAmount}
-                                onChange={(e) =>
-                                  setPaymentAmount(e.target.value)
-                                }
-                              />
-                            </div>
-                            <Button onClick={handlePayment}>
-                              To‘lovni tasdiqlash
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="mt-5 grid grid-cols-4 items-center bg-gray-500">
-                          <div className="border-r py-2 px-4">#</div>
-                          <div className="border-r py-2 px-4">Summa</div>
-                          <div className="border-r py-2 px-4">Sana</div>
-                          <div className="border-r py-2 px-4">To'lov turi</div>
-                        </div>
-                        <div className="">
-                          {transactions.map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="grid grid-cols-4 items-center border-b border-r border-l"
-                            >
-                              <div className="py-2 px-4 border-r">
-                                {idx + 1}
+                          <Tabs defaultValue="details" className="m-6 border">
+                            <TabsList>
+                              <TabsTrigger value="details">
+                                To'lov ma'lumotlari
+                              </TabsTrigger>
+                              <TabsTrigger value="services">
+                                Xizmatlar
+                              </TabsTrigger>
+                              <TabsTrigger value="transactions">
+                                Transaksiyalar tarixi
+                              </TabsTrigger>
+                            </TabsList>
+
+                            <TabsContent value="details">
+                              <div className="space-y-4 p-5 shadow-lg">
+                                <div className="border text-sm">
+                                  <div className="grid grid-cols-2">
+                                    <div className="border-b px-2 py-1">
+                                      Ja'mi summa:
+                                    </div>
+                                    <div className="border-l border-b px-2 py-1">
+                                      {client.totalPrice?.toLocaleString()}
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-2">
+                                    <div className="border-b px-2 py-1">
+                                      To'landi:
+                                    </div>
+                                    <div className="border-l border-b px-2 py-1">
+                                      {client.paid?.toLocaleString()}
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-2">
+                                    <div className=" px-2 py-1">Qoldiq:</div>
+                                    <div className="border-l px-2 py-1">
+                                      {qoldiq?.toLocaleString()}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-end gap-5 ">
+                                  <div className="flex gap-4">
+                                    <div className="space-y-1 w-[200px]">
+                                      <label className="block text-sm font-medium">
+                                        To‘lov turi{" "}
+                                        <strong className="text-red-600">
+                                          *
+                                        </strong>
+                                      </label>
+                                      <Select
+                                        onValueChange={(value) =>
+                                          setPaymentType(value)
+                                        }
+                                      >
+                                        <SelectTrigger>
+                                          {paymentType ||
+                                            "To‘lov turini tanlang"}
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="Naqd">
+                                            Naqd
+                                          </SelectItem>
+                                          <SelectItem value="Plastik">
+                                            Plastik
+                                          </SelectItem>
+                                          <SelectItem value="Bank o‘tkazmasi">
+                                            Bank o‘tkazmasi
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-1 w-[200px]">
+                                    <label className="block text-sm font-medium">
+                                      To‘lov summasi{" "}
+                                      <strong className="text-red-600">
+                                        *
+                                      </strong>
+                                    </label>
+                                    <Input
+                                      type="number"
+                                      value={paymentAmount}
+                                      onChange={(e) =>
+                                        setPaymentAmount(e.target.value)
+                                      }
+                                    />
+                                  </div>
+                                  <Button
+                                    onClick={handlePayment}
+                                    variant="gomed"
+                                    className="px-10"
+                                  >
+                                    To‘lovni qo'shish
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="py-2 px-4 border-r">
-                                {item.amount?.toLocaleString()}
+                            </TabsContent>
+                            <TabsContent value="services">
+                              <div className=" grid grid-cols-3 items-center bg-gray-500">
+                                <div className="border-r py-2 px-4">№</div>
+                                <div className="border-r py-2 px-4">
+                                  Xizmat nomi
+                                </div>
+                                <div className="border-r py-2 px-4">Narxi</div>
                               </div>
-                              <div className="py-2 px-4 border-r">
-                                {item.date?.toDate().toLocaleString()}
+                              {client.services?.map((service, idx) => (
+                                <div
+                                  key={idx}
+                                  className="grid grid-cols-3 items-center border-b border-r border-l"
+                                >
+                                  <div className="py-2 px-4 border-r">
+                                    {idx + 1}
+                                  </div>
+                                  <div className="py-2 px-4 border-r">
+                                    {service.name}
+                                  </div>
+                                  <div className="py-2 px-4 border-r">
+                                    {service.price}
+                                  </div>
+                                </div>
+                              ))}
+                            </TabsContent>
+                            <TabsContent value="transactions">
+                              <div className="mt-5 grid grid-cols-4 items-center bg-gray-500">
+                                <div className="border-r py-2 px-4">#</div>
+                                <div className="border-r py-2 px-4">Summa</div>
+                                <div className="border-r py-2 px-4">Sana</div>
+                                <div className="border-r py-2 px-4">
+                                  To'lov turi
+                                </div>
                               </div>
-                              <div className="py-2 px-4 border-r">
-                                {item.paymentType}
+                              <div className="">
+                                {transactions.map((item, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="grid grid-cols-4 items-center border-b border-r border-l"
+                                  >
+                                    <div className="py-2 px-4 border-r">
+                                      {idx + 1}
+                                    </div>
+                                    <div className="py-2 px-4 border-r">
+                                      {item.amount?.toLocaleString()}
+                                    </div>
+                                    <div className="py-2 px-4 border-r">
+                                      {item.date?.toDate().toLocaleString()}
+                                    </div>
+                                    <div className="py-2 px-4 border-r">
+                                      {item.paymentType}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      </SheetContent>
-                    </Sheet>
+                            </TabsContent>
+                          </Tabs>
+                        </SheetContent>
+                      </Sheet>
+                      <Button
+                        onClick={() => handleDelete(client.id)}
+                        variant="destructive"
+                        className="w-[35px] h-[35px]"
+                      >
+                        <Trash />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
             })}
           </TableBody>
         </Table>
+        <div className="w-full flex items-end justify-end mt-3 gap-3">
+          <div className="flex gap-2 items-center">
+            <Button
+              className="w-[45px] h-[45px] rounded-xl"
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft />
+            </Button>
+            {currentPage} / {totalPages}
+            <Button
+              className="w-[45px] h-[45px] rounded-xl"
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight />
+            </Button>
+          </div>
+          <div>
+            <Select
+              id="itemsPerPage"
+              defaultValue={itemsPerPage}
+              onValueChange={handleItemsPerPageChange}
+              className="p-2 rounded"
+            >
+              <SelectTrigger className="w-[70px] bg-white focus:outline-none">
+                <SelectValue placeholder={itemsPerPage} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="30">30</SelectItem>
+                <SelectItem value="40">40</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="60">60</SelectItem>
+                <SelectItem value="70">70</SelectItem>
+                <SelectItem value="80">80</SelectItem>
+                <SelectItem value="90">90</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+                <SelectItem value="200">200</SelectItem>
+                <SelectItem value="300">300</SelectItem>
+                <SelectItem value="400">400</SelectItem>
+                <SelectItem value="500">500</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
     </div>
   );
