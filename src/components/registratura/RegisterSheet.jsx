@@ -19,7 +19,7 @@ import {
 import { Checkbox } from "../ui/checkbox";
 import { Button } from "../ui/button";
 import {
-    addDoc,
+  addDoc,
   collection,
   doc,
   getDoc,
@@ -192,8 +192,6 @@ const RegisterSheet = () => {
         toast.success(
           `Bemor muvaffaqiyatli qo'shildi! Raqam: ${newPatientNumber}`
         );
-
-
       } else {
         toast.error("Raqamlar hisoblagichi topilmadi!");
       }
@@ -323,17 +321,18 @@ const RegisterSheet = () => {
           </SheetTitle>
         </SheetHeader>
         <div className="p-2 flex bg-red-200">
-          <div className="receipt w-[80mm] border h-[90vh] bg-white p-2 ">
-            <div className="mx-auto w-[100px] h-[100px]  relative">
+          <div className="receipt w-[90mm] border h-[90vh] bg-white p-2 ">
+            <div className="mx-auto w-[150px] h-[150px]  relative">
               <Image fill alt="imc logo" src="/imc.png" />
             </div>
-            <h1 className="text-center font-bold">
+            <h1 className="text-center font-bold text-xl">
               {patient.firstName} {patient.lastName}
             </h1>
-            <h1 className="text-center font-bold">
+            <h1 className="text-center font-bold text-xl">
               ID: {patient.patientNumber}
             </h1>
             <h1 className="text-center font-bold">+998{patient.phone}</h1>
+            <br />
             <hr />
             <div className="py-4">
               {patient.services.map((service, idx) => (
@@ -356,7 +355,7 @@ const RegisterSheet = () => {
               UZS
             </p>
           </div>
-          <div className="w-[50%] border h-[90vh] bg-white p-5 space-y-4">
+          <div className="w-[55%] border h-[90vh] bg-white p-5 space-y-4">
             <div className="relative">
               <Input
                 placeholder="Ism"
