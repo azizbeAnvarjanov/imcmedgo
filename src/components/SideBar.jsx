@@ -5,7 +5,7 @@ import { ClipboardPlus, Presentation, WalletCards } from "lucide-react";
 
 const SideBar = () => {
   return (
-    <div className="w-[15vh] h-screen bg-white fixed left-0  p-2 z-50 border-r">
+    <div className="w-[12vh] h-screen bg-white fixed left-0  p-2 z-50 border-r">
       <div className="w-full py-3 cursor-pointer hover:bg-[#e3f1ff] rounded-md text-sm flex items-center justify-center flex-col text-center font-bold relative">
         <Presentation size={24} strokeWidth={1.5} className="mb-1" />
         Dashboard

@@ -158,68 +158,69 @@ export default function PatientRegistration() {
 
   useEffect(() => {
     const fetchPatients = async () => {
-      if (patient.firstName.trim() === '') {
+      if (patient.firstName.trim() === "") {
         setSuggestions([]);
         setSuggestionsOpen(false);
         return;
       }
-      
+
       try {
         const q = query(
-          collection(db, 'patients'),
-          where('firstName', '>=', patient.firstName),
-          where('firstName', '<=', patient.firstName + '\uf8ff')
-          );
-          const querySnapshot = await getDocs(q);
-          
+          collection(db, "patients"),
+          where("firstName", ">=", patient.firstName),
+          where("firstName", "<=", patient.firstName + "\uf8ff")
+        );
+        const querySnapshot = await getDocs(q);
+
         // Duplicatlarni filtrlash uchun Map ishlatiladi
         const uniquePatients = new Map();
-        querySnapshot.docs.forEach(doc => {
+        querySnapshot.docs.forEach((doc) => {
           const data = doc.data();
           const fullName = `${data.firstName} ${data.lastName}`;
           if (!uniquePatients.has(fullName)) {
             uniquePatients.set(fullName, { id: doc.id, ...data });
           }
         });
-        
+
         setSuggestions(Array.from(uniquePatients.values()));
         setSuggestionsOpen(true);
       } catch (error) {
-        console.error('Error fetching patients:', error);
+        console.error("Error fetching patients:", error);
       }
     };
 
     fetchPatients();
   }, [patient.firstName !== ""]);
-// Tanlangan bemor ma'lumotlarini olish va inputlarga to'ldirish
-const handleSelectPatient = async (selectedPatient) => {
-  try {
-    const patientRef = doc(db, 'patients', selectedPatient.id);
-    const patientDoc = await getDoc(patientRef);
-    if (patientDoc.exists()) {
-      const patientData = patientDoc.data();
-      setPatient({
-        ...patient,
-        firstName: patientData.firstName,
-        lastName: patientData.lastName,
-        birthDate: patientData.birthDate || '',
-        gender: patientData.gender || '',
-        region: patientData.region || '',
-        district: patientData.district || '',
-        area: patientData.area || '',
-        phone: patientData.phone || '',
-        visits: patientData.visits + 1 || '',
-      });
-      setSuggestionsOpen(false);
+  
+  // Tanlangan bemor ma'lumotlarini olish va inputlarga to'ldirish
+  const handleSelectPatient = async (selectedPatient) => {
+    try {
+      const patientRef = doc(db, "patients", selectedPatient.id);
+      const patientDoc = await getDoc(patientRef);
+      if (patientDoc.exists()) {
+        const patientData = patientDoc.data();
+        setPatient({
+          ...patient,
+          firstName: patientData.firstName,
+          lastName: patientData.lastName,
+          birthDate: patientData.birthDate || "",
+          gender: patientData.gender || "",
+          region: patientData.region || "",
+          district: patientData.district || "",
+          area: patientData.area || "",
+          phone: patientData.phone || "",
+          visits: patientData.visits + 1 || "",
+        });
+        setSuggestionsOpen(false);
+      }
+    } catch (error) {
+      console.error("Error fetching patient details:", error);
     }
-  } catch (error) {
-    console.error('Error fetching patient details:', error);
-  }
-  setSuggestions([])
-  // Tanlangandan keyin suggestionsni yopish
-};
+    setSuggestions([]);
+    // Tanlangandan keyin suggestionsni yopish
+  };
 
-console.log(patient);
+  console.log(patient);
 
   return (
     <div className="p-4 space-y-4">
@@ -303,9 +304,12 @@ console.log(patient);
       >
         <SelectTrigger className="w-[180px]">{patient.doctor}</SelectTrigger>
         <SelectContent>
-          {doctors.map((doctor) => (
-            <SelectItem key={doctor.id} value={doctor.id}>
-              {doctor.name}
+          {doctors.map((doctor, idx) => (
+            <SelectItem
+              key={idx}
+              value={`${doctor.firstName} ${doctor.lastName}`}
+            >
+              {doctor.firstName} {doctor.lastName}
             </SelectItem>
           ))}
         </SelectContent>

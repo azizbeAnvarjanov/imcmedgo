@@ -1,7 +1,7 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FiPlus } from "react-icons/fi";
+import RegisterSheet from "./registratura/RegisterSheet";
 
 const Navbar = () => {
   return (
@@ -12,9 +12,7 @@ const Navbar = () => {
         </Link>
       </div>
       <div className="flex items-center gap-3">
-        <button className="w-[45px] border gird place-items-center hover:bg-muted h-[45px] text-2xl rounded-xl p-0">
-          <FiPlus className="text-2xl" />
-        </button>
+        <RegisterSheet />
         <button className="w-[45px] border gird place-items-center hover:bg-muted h-[45px] text-2xl rounded-xl p-0">
           <h2 className="text-xl">A</h2>
         </button>

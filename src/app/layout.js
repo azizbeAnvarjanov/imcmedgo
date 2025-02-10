@@ -28,7 +28,7 @@ export default function RootLayout({ children }) {
         <Toaster position="top-center" reverseOrder={false} />
         <Navbar />
         <SideBar />
-        <div className="pl-[15vh]">{children}</div>
+        <div className="pl-[12vh]">{children}</div>
       </body>
     </html>
   );

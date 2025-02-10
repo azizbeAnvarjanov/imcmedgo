@@ -97,3 +97,21 @@ body {
 }
 
 
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .receipt, .receipt * {
+    visibility: visible;
+  }
+  .receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
+  }
+
+  button {
+    display: none; /* Print qilganda button ko'rinmasligi uchun */
+  }
+}

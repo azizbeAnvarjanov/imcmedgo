@@ -63,11 +63,13 @@ export default function KassirPage() {
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentType, setPaymentType] = useState("");
   const [transactions, setTransactions] = useState([]);
-  const [doctors, setDoctors] = useState({});
+  const [doctors, setDoctors] = useState([]);
   const [dateFilter, setDateFilter] = useState({ from: 0, to: 0 });
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState("20"); // Default number of items per page
+
+  console.log(doctors);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -89,12 +91,10 @@ export default function KassirPage() {
 
   const fetchDoctors = async () => {
     const querySnapshot = await getDocs(collection(db, "doctors"));
-    const doctorsData = {};
-    querySnapshot.forEach((doc) => {
-      const doctorData = doc.data();
-      doctorsData[doctorData.id] = doctorData.name; // Firebase hujjat ichidagi `id` maydonini ishlatyapmiz
-    });
-    setDoctors(doctorsData);
+
+    setDoctors(
+      querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+    );
   };
 
   const handlePayment = async () => {
@@ -187,7 +187,6 @@ export default function KassirPage() {
 
       const patientData = patientSnap.data();
       const collectionDataRef = doc(db, "data", "krYftFb0sR60jyaLQbQs");
-      
 
       // Agar status "to'lanmagan" bo'lmasa, bonuses va transactions kolleksiyalaridan ham o‘chiramiz
       if (patientData.status !== "to'lanmagan") {
@@ -288,7 +287,7 @@ export default function KassirPage() {
           </div>
           {!activeFilter && (
             <Button
-            disabled={dateFilter.from | dateFilter.to === 0 ? true : false}
+              disabled={dateFilter.from | (dateFilter.to === 0) ? true : false}
               onClick={handleFilter}
               className="bg-gradient-to-l from-blue-600 to-green-600"
             >
@@ -344,14 +343,14 @@ export default function KassirPage() {
           </p>
         </div>
         <div className="pr-4 flex items-center gap-4">
-            <div className="flex gap-1 items-center">
-              <div className="w-[16px] h-[15px] rounded-sm bg-[--green]"></div>
-              100% to'lov
-            </div>
-            <div className="flex gap-1 items-center">
-              <div className="w-[16px] h-[15px] rounded-sm bg-[--yellow]"></div>
-             Kam to'lov
-            </div>
+          <div className="flex gap-1 items-center">
+            <div className="w-[16px] h-[15px] rounded-sm bg-[--green]"></div>
+            100% to'lov
+          </div>
+          <div className="flex gap-1 items-center">
+            <div className="w-[16px] h-[15px] rounded-sm bg-[--yellow]"></div>
+            Kam to'lov
+          </div>
         </div>
       </div>
 
@@ -361,7 +360,7 @@ export default function KassirPage() {
             <TableRow>
               <TableCell className="w-[100px]">№</TableCell>
               <TableCell className="w-[300px]">Bemor</TableCell>
-              <TableCell>Shifokor</TableCell>
+              <TableCell className="w-[200px]">Shifokor</TableCell>
               <TableCell>Visits</TableCell>
               <TableCell>Chegirma</TableCell>
               <TableCell>Jami summa</TableCell>
@@ -383,7 +382,21 @@ export default function KassirPage() {
                   className="w-full py-5 rounded-lg placeholder:opacity-50 text-opacity-100 text-black"
                 />
               </TableCell>
-              <TableCell></TableCell>
+              <TableCell>
+                <Select className="w-full">
+                  <SelectTrigger>Shifokor</SelectTrigger>
+                  <SelectContent>
+                    {doctors?.map((doctor, idx) => (
+                      <SelectItem
+                        key={idx}
+                        value={`${doctor.firstName} ${doctor.lastName}`}
+                      >
+                        {doctor.firstName} {doctor.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </TableCell>
               <TableCell></TableCell>
               <TableCell></TableCell>
               <TableCell></TableCell>
@@ -411,7 +424,7 @@ export default function KassirPage() {
                   <TableCell>
                     {client.lastName} {client.firstName}
                   </TableCell>
-                  <TableCell>{doctors[client.doctor] || "Noma'lum"}</TableCell>
+                  <TableCell>{client.doctor}</TableCell>
                   <TableCell>{client.visits || "Noma'lum"}</TableCell>
                   <TableCell>{client.discount}</TableCell>
                   <TableCell>{client.totalPrice?.toLocaleString()}</TableCell>
