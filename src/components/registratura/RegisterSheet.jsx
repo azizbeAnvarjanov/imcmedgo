@@ -111,18 +111,17 @@ const RegisterSheet = () => {
 
   const [services, setServices] = useState([]);
   const [pNumber, setPNUmber] = useState(null);
-
+  const fetchPNUmber = async () => {
+    const counterRef = doc(db, "data", "krYftFb0sR60jyaLQbQs");
+    const counterSnap = await getDoc(counterRef);
+    if (counterSnap.exists()) {
+      const currentNumber = counterSnap.data().patientNumber;
+      const newPatientNumber = Number(currentNumber) + 1;
+      setPNUmber(newPatientNumber);
+      setPatient({ ...patient, patientNumber: newPatientNumber });
+    }
+  };
   useEffect(() => {
-    const fetchPNUmber = async () => {
-      const counterRef = doc(db, "data", "krYftFb0sR60jyaLQbQs");
-      const counterSnap = await getDoc(counterRef);
-      if (counterSnap.exists()) {
-        const currentNumber = counterSnap.data().patientNumber;
-        const newPatientNumber = Number(currentNumber) + 1;
-        setPNUmber(newPatientNumber);
-        setPatient({ ...patient, patientNumber: newPatientNumber });
-      }
-    };
     const fetchServices = async () => {
       const querySnapshot = await getDocs(collection(db, "services"));
       setServices(
@@ -188,7 +187,7 @@ const RegisterSheet = () => {
         });
 
         await updateDoc(counterRef, { patientNumber: newPatientNumber });
-
+        fetchPNUmber();
         toast.success(
           `Bemor muvaffaqiyatli qo'shildi! Raqam: ${newPatientNumber}`
         );
@@ -263,6 +262,7 @@ const RegisterSheet = () => {
   };
 
   const clearValue = () => {
+    fetchPNUmber();
     setCheckedItems({});
     setPatient({
       firstName: "",
@@ -287,6 +287,17 @@ const RegisterSheet = () => {
   const handlePrint = () => {
     window.print();
   };
+
+  const now = new Date();
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0"); // Oy 0 dan boshlanadi, shuning uchun 1 qo'shiladi
+  const day = String(now.getDate()).padStart(2, "0");
+
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+
+  const today = `${hours}:${minutes}, ${year}-${month}-${day}`;
   console.log(patient);
   return (
     <Sheet>
@@ -321,10 +332,12 @@ const RegisterSheet = () => {
           </SheetTitle>
         </SheetHeader>
         <div className="p-2 flex bg-red-200">
-          <div className="receipt w-[90mm] border h-[90vh] bg-white p-2 ">
+          <div className="receipt w-[100mm] border h-[90vh] bg-white p-2 ">
             <div className="mx-auto w-[150px] h-[150px]  relative">
               <Image fill alt="imc logo" src="/imc.png" />
             </div>
+            <p className="text-center font-bold">{today}</p>
+            <p className="text-center">Bemor:</p>
             <h1 className="text-center font-bold text-xl">
               {patient.firstName} {patient.lastName}
             </h1>
@@ -334,25 +347,30 @@ const RegisterSheet = () => {
             <h1 className="text-center font-bold">+998{patient.phone}</h1>
             <br />
             <hr />
-            <div className="py-4">
+            <div className="pt-4">
+              <div className="p-1 flex items-center justify-between">
+                <div>Xizmat</div>
+                <div>sum</div>
+              </div>
               {patient.services.map((service, idx) => (
                 <div
                   key={idx}
-                  className="p-1 flex items-center justify-between"
+                  className="p-1 flex items-center justify-between mb-4"
                 >
                   <div>
                     {idx + 1}. {service.name}
                   </div>
-                  <div>{service.price?.toLocaleString()}</div>
+                  <div className="font-bold">
+                    {service.price?.toLocaleString()}
+                  </div>
                 </div>
               ))}
             </div>
-            <p className="flex items-center justify-between">
-              <strong>Chegirma:</strong> {patient.discount?.toLocaleString()} %
+            <p className="flex items-center justify-between font-bold">
+              <span>Chegirma:</span> {patient.discount?.toLocaleString()} %
             </p>
-            <p className="flex items-center justify-between">
-              <strong>Jami Narx:</strong> {patient.totalPrice?.toLocaleString()}{" "}
-              UZS
+            <p className="flex items-center justify-between font-bold">
+              <span>Jami Narx:</span> {patient.totalPrice?.toLocaleString()} UZS
             </p>
           </div>
           <div className="w-[55%] border h-[90vh] bg-white p-5 space-y-4">
